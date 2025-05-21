@@ -2,33 +2,42 @@
 import React, { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { AdminGuard } from '@/components/admin/AdminGuard';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { ImageUploader } from '@/components/admin/ImageUploader';
 import { useAdmin } from '@/context/AdminContext';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const TeamImages = () => {
-  const { teamMembers, updateTeamMembers } = useAdmin();
+  const { teamMembers, updateTeamMembers, isLoading } = useAdmin();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   
-  const handleAddImage = (imageUrl: string) => {
-    const newMember = {
-      id: `team-${Date.now()}`,
-      imageUrl
-    };
-    
-    updateTeamMembers([...teamMembers, newMember]);
-    setIsAddDialogOpen(false);
-    toast({
-      title: "Imagem adicionada",
-      description: "A nova imagem da equipe foi adicionada com sucesso"
-    });
+  const handleAddImage = async (imageUrl: string) => {
+    try {
+      setIsSaving(true);
+      const newMember = {
+        id: `team-${Date.now()}`,
+        imageUrl
+      };
+      
+      await updateTeamMembers([...teamMembers, newMember]);
+      setIsAddDialogOpen(false);
+    } catch (error) {
+      console.error('Erro ao adicionar imagem:', error);
+      toast({
+        title: "Erro ao adicionar imagem",
+        description: "Ocorreu um erro ao adicionar a imagem da equipe.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
   
   const confirmDelete = (id: string) => {
@@ -36,22 +45,42 @@ const TeamImages = () => {
     setIsDeleteDialogOpen(true);
   };
   
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!memberToDelete) return;
     
-    const updatedMembers = teamMembers.filter(
-      member => member.id !== memberToDelete
-    );
-    
-    updateTeamMembers(updatedMembers);
-    setIsDeleteDialogOpen(false);
-    setMemberToDelete(null);
-    
-    toast({
-      title: "Imagem excluída",
-      description: "A imagem da equipe foi excluída com sucesso"
-    });
+    try {
+      setIsSaving(true);
+      const updatedMembers = teamMembers.filter(
+        member => member.id !== memberToDelete
+      );
+      
+      await updateTeamMembers(updatedMembers);
+      setIsDeleteDialogOpen(false);
+      setMemberToDelete(null);
+    } catch (error) {
+      console.error('Erro ao excluir imagem:', error);
+      toast({
+        title: "Erro ao excluir imagem",
+        description: "Ocorreu um erro ao excluir a imagem da equipe.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <AdminGuard>
+        <AdminLayout active="team">
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="w-12 h-12 text-[#A21C1C] animate-spin mb-4" />
+            <p className="text-gray-500">Carregando imagens da equipe...</p>
+          </div>
+        </AdminLayout>
+      </AdminGuard>
+    );
+  }
 
   return (
     <AdminGuard>
@@ -64,8 +93,14 @@ const TeamImages = () => {
           <Button 
             onClick={() => setIsAddDialogOpen(true)}
             className="bg-[#A21C1C] hover:bg-[#911616] text-white"
+            disabled={isSaving}
           >
-            Adicionar Imagem
+            {isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Processando...
+              </>
+            ) : "Adicionar Imagem"}
           </Button>
         </div>
         
@@ -76,8 +111,14 @@ const TeamImages = () => {
               <Button 
                 onClick={() => setIsAddDialogOpen(true)}
                 className="bg-[#A21C1C] hover:bg-[#911616] text-white"
+                disabled={isSaving}
               >
-                Adicionar Imagem
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processando...
+                  </>
+                ) : "Adicionar Imagem"}
               </Button>
             </CardContent>
           </Card>
@@ -99,9 +140,16 @@ const TeamImages = () => {
                     variant="destructive"
                     size="sm"
                     onClick={() => confirmDelete(member.id)}
+                    disabled={isSaving}
                   >
-                    <Trash2 size={16} className="mr-2" />
-                    Excluir
+                    {isSaving ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <>
+                        <Trash2 size={16} className="mr-2" />
+                        Excluir
+                      </>
+                    )}
                   </Button>
                 </CardFooter>
               </Card>
@@ -120,7 +168,8 @@ const TeamImages = () => {
             </DialogHeader>
             <ImageUploader 
               onImageSelected={handleAddImage} 
-              buttonText="Adicionar Imagem"
+              buttonText={isSaving ? "Adicionando..." : "Adicionar Imagem"}
+              disabled={isSaving}
             />
           </DialogContent>
         </Dialog>
@@ -138,14 +187,21 @@ const TeamImages = () => {
               <Button 
                 variant="outline" 
                 onClick={() => setIsDeleteDialogOpen(false)}
+                disabled={isSaving}
               >
                 Cancelar
               </Button>
               <Button 
                 variant="destructive" 
                 onClick={handleDelete}
+                disabled={isSaving}
               >
-                Excluir
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Excluindo...
+                  </>
+                ) : "Excluir"}
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -1,5 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/components/ui/use-toast';
 
 export interface MarketingCampaign {
   id: string;
@@ -31,10 +33,11 @@ interface AdminContextType {
   teamMembers: TeamMember[];
   testimonials: Testimonial[];
   videos: Video[];
-  updateMarketingCampaigns: (campaigns: MarketingCampaign[]) => void;
-  updateTeamMembers: (members: TeamMember[]) => void;
-  updateTestimonials: (testimonials: Testimonial[]) => void;
-  updateVideos: (videos: Video[]) => void;
+  isLoading: boolean;
+  updateMarketingCampaigns: (campaigns: MarketingCampaign[]) => Promise<void>;
+  updateTeamMembers: (members: TeamMember[]) => Promise<void>;
+  updateTestimonials: (testimonials: Testimonial[]) => Promise<void>;
+  updateVideos: (videos: Video[]) => Promise<void>;
 }
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
@@ -48,98 +51,439 @@ export const useAdmin = () => {
 };
 
 export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Initialize state with data from localStorage or defaults
-  const [marketingCampaigns, setMarketingCampaigns] = useState<MarketingCampaign[]>(() => {
-    const saved = localStorage.getItem('admin-marketing-campaigns');
-    if (saved) return JSON.parse(saved);
-    return [
-      { id: '1', imageUrl: 'https://i.imgur.com/Z70ULv8.jpeg' },
-      { id: '2', imageUrl: 'https://i.imgur.com/8lTN5pa.jpeg' },
-      { id: '3', imageUrl: 'https://i.imgur.com/7ShMluZ.jpeg' },
-      { id: '4', imageUrl: 'https://i.imgur.com/fNA8WBM.jpeg' }
-    ];
-  });
-  
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>(() => {
-    const saved = localStorage.getItem('admin-team-members');
-    if (saved) return JSON.parse(saved);
-    return [
-      { id: '1', imageUrl: 'https://i.imgur.com/eKGLi9U.jpeg' },
-      { id: '2', imageUrl: 'https://i.imgur.com/oILzGmK.jpeg' }
-    ];
-  });
-  
-  const [testimonials, setTestimonials] = useState<Testimonial[]>(() => {
-    const saved = localStorage.getItem('admin-testimonials');
-    if (saved) return JSON.parse(saved);
-    return [
-      {
-        id: '1',
-        quote: "No dia que aceitei integrar meu estabelecimento ao Mais Delivery, vi resultados imediatos. Agora estamos oferecendo nossos produtos para um público muito maior, sem precisar de investimento.",
-        author: "José Pereira",
-        business: "JP LANCHES",
-        location: "Ibotirama/BA",
-        logoUrl: "/lovable-uploads/f77b271e-548c-4262-acd1-cc6a29a145d8.png"
-      },
-      {
-        id: '2',
-        quote: "A parceria com o Mais Delivery transformou nossa visibilidade no mercado. O aumento nas vendas foi notável já nos primeiros meses, e a taxa justa torna o serviço extremamente vantajoso.",
-        author: "Jairo Chagas",
-        business: "JC IMPORTS",
-        location: "Ibotirama/BA",
-        logoUrl: "/lovable-uploads/fd760325-58a6-411e-a047-98f63307db41.png"
-      },
-      {
-        id: '3',
-        quote: "Nossa entrada no Mais Delivery foi uma decisão acertada. A plataforma é intuitiva e a equipe de suporte realmente se importa com nosso sucesso. Recomendamos o serviço.",
-        author: "Eriques Fonseca",
-        business: "Lanchonete Pinguim",
-        location: "Barra/BA",
-        logoUrl: "/lovable-uploads/c301d3fe-5693-4938-b64e-be25b2d44acf.png"
+  const [marketingCampaigns, setMarketingCampaigns] = useState<MarketingCampaign[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [videos, setVideos] = useState<Video[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+
+  // Função para carregar dados das campanhas de marketing
+  const fetchMarketingCampaigns = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('marketing_campaigns')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      const formattedData = data.map(campaign => ({
+        id: campaign.id,
+        imageUrl: campaign.image_url
+      }));
+
+      setMarketingCampaigns(formattedData);
+    } catch (error) {
+      console.error('Erro ao carregar campanhas de marketing:', error);
+      toast({
+        title: "Erro ao carregar dados",
+        description: "Não foi possível carregar as campanhas de marketing.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Função para carregar dados dos membros da equipe
+  const fetchTeamMembers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      const formattedData = data.map(member => ({
+        id: member.id,
+        imageUrl: member.image_url
+      }));
+
+      setTeamMembers(formattedData);
+    } catch (error) {
+      console.error('Erro ao carregar membros da equipe:', error);
+      toast({
+        title: "Erro ao carregar dados",
+        description: "Não foi possível carregar os membros da equipe.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Função para carregar dados dos depoimentos
+  const fetchTestimonials = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('testimonials')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      const formattedData = data.map(testimonial => ({
+        id: testimonial.id,
+        quote: testimonial.quote,
+        author: testimonial.author,
+        business: testimonial.business,
+        location: testimonial.location,
+        logoUrl: testimonial.logo_url
+      }));
+
+      setTestimonials(formattedData);
+    } catch (error) {
+      console.error('Erro ao carregar depoimentos:', error);
+      toast({
+        title: "Erro ao carregar dados",
+        description: "Não foi possível carregar os depoimentos.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Função para carregar dados dos vídeos
+  const fetchVideos = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('videos')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      const formattedData = data.map(video => ({
+        id: video.id,
+        url: video.url,
+        title: video.title
+      }));
+
+      setVideos(formattedData);
+    } catch (error) {
+      console.error('Erro ao carregar vídeos:', error);
+      toast({
+        title: "Erro ao carregar dados",
+        description: "Não foi possível carregar os vídeos.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Carregar todos os dados quando o componente é montado
+  useEffect(() => {
+    const loadAllData = async () => {
+      setIsLoading(true);
+      await Promise.all([
+        fetchMarketingCampaigns(),
+        fetchTeamMembers(),
+        fetchTestimonials(),
+        fetchVideos()
+      ]);
+      setIsLoading(false);
+    };
+
+    loadAllData();
+
+    // Configurar inscrições em tempo real para atualizações
+    const marketingCampaignsSubscription = supabase
+      .channel('public:marketing_campaigns')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'marketing_campaigns' 
+      }, () => {
+        fetchMarketingCampaigns();
+      })
+      .subscribe();
+
+    const teamMembersSubscription = supabase
+      .channel('public:team_members')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'team_members' 
+      }, () => {
+        fetchTeamMembers();
+      })
+      .subscribe();
+
+    const testimonialsSubscription = supabase
+      .channel('public:testimonials')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'testimonials' 
+      }, () => {
+        fetchTestimonials();
+      })
+      .subscribe();
+
+    const videosSubscription = supabase
+      .channel('public:videos')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'videos' 
+      }, () => {
+        fetchVideos();
+      })
+      .subscribe();
+
+    // Limpar inscrições quando o componente é desmontado
+    return () => {
+      supabase.removeChannel(marketingCampaignsSubscription);
+      supabase.removeChannel(teamMembersSubscription);
+      supabase.removeChannel(testimonialsSubscription);
+      supabase.removeChannel(videosSubscription);
+    };
+  }, []);
+
+  // Função para atualizar campanhas de marketing
+  const updateMarketingCampaigns = async (campaigns: MarketingCampaign[]) => {
+    try {
+      // Obter campanhas existentes para determinar quais excluir
+      const { data: existingCampaigns } = await supabase
+        .from('marketing_campaigns')
+        .select('id');
+      
+      const existingIds = existingCampaigns?.map(c => c.id) || [];
+      const newIds = campaigns.map(c => c.id);
+      
+      // IDs para excluir (existem no banco, mas não na nova lista)
+      const idsToDelete = existingIds.filter(id => !newIds.includes(id));
+      
+      // Excluir campanhas que não estão mais na lista
+      if (idsToDelete.length > 0) {
+        await supabase
+          .from('marketing_campaigns')
+          .delete()
+          .in('id', idsToDelete);
       }
-    ];
-  });
-  
-  const [videos, setVideos] = useState<Video[]>(() => {
-    const saved = localStorage.getItem('admin-videos');
-    if (saved) return JSON.parse(saved);
-    return [
-      { id: '1', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', title: 'Vídeo Demonstrativo 1' },
-      { id: '2', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', title: 'Vídeo Demonstrativo 2' }
-    ];
-  });
-  
-  // Save data to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem('admin-marketing-campaigns', JSON.stringify(marketingCampaigns));
-  }, [marketingCampaigns]);
-  
-  useEffect(() => {
-    localStorage.setItem('admin-team-members', JSON.stringify(teamMembers));
-  }, [teamMembers]);
-  
-  useEffect(() => {
-    localStorage.setItem('admin-testimonials', JSON.stringify(testimonials));
-  }, [testimonials]);
-  
-  useEffect(() => {
-    localStorage.setItem('admin-videos', JSON.stringify(videos));
-  }, [videos]);
-  
-  const updateMarketingCampaigns = (campaigns: MarketingCampaign[]) => {
-    setMarketingCampaigns(campaigns);
+      
+      // Atualizar ou inserir campanhas existentes
+      for (const campaign of campaigns) {
+        if (campaign.id.startsWith('campaign-')) {
+          // Nova campanha (ID temporário do frontend)
+          await supabase
+            .from('marketing_campaigns')
+            .insert({
+              image_url: campaign.imageUrl
+            });
+        } else {
+          // Campanha existente
+          await supabase
+            .from('marketing_campaigns')
+            .update({
+              image_url: campaign.imageUrl,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', campaign.id);
+        }
+      }
+      
+      // Atualizar estado local
+      await fetchMarketingCampaigns();
+      
+      toast({
+        title: "Sucesso",
+        description: "Campanhas de marketing atualizadas com sucesso"
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar campanhas de marketing:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar as campanhas de marketing",
+        variant: "destructive"
+      });
+    }
   };
-  
-  const updateTeamMembers = (members: TeamMember[]) => {
-    setTeamMembers(members);
+
+  // Função para atualizar membros da equipe
+  const updateTeamMembers = async (members: TeamMember[]) => {
+    try {
+      // Obter membros existentes para determinar quais excluir
+      const { data: existingMembers } = await supabase
+        .from('team_members')
+        .select('id');
+      
+      const existingIds = existingMembers?.map(m => m.id) || [];
+      const newIds = members.map(m => m.id);
+      
+      // IDs para excluir (existem no banco, mas não na nova lista)
+      const idsToDelete = existingIds.filter(id => !newIds.includes(id));
+      
+      // Excluir membros que não estão mais na lista
+      if (idsToDelete.length > 0) {
+        await supabase
+          .from('team_members')
+          .delete()
+          .in('id', idsToDelete);
+      }
+      
+      // Atualizar ou inserir membros existentes
+      for (const member of members) {
+        if (member.id.startsWith('team-')) {
+          // Novo membro (ID temporário do frontend)
+          await supabase
+            .from('team_members')
+            .insert({
+              image_url: member.imageUrl
+            });
+        } else {
+          // Membro existente
+          await supabase
+            .from('team_members')
+            .update({
+              image_url: member.imageUrl,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', member.id);
+        }
+      }
+      
+      // Atualizar estado local
+      await fetchTeamMembers();
+      
+      toast({
+        title: "Sucesso",
+        description: "Membros da equipe atualizados com sucesso"
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar membros da equipe:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar os membros da equipe",
+        variant: "destructive"
+      });
+    }
   };
-  
-  const updateTestimonials = (testimonials: Testimonial[]) => {
-    setTestimonials(testimonials);
+
+  // Função para atualizar depoimentos
+  const updateTestimonials = async (updatedTestimonials: Testimonial[]) => {
+    try {
+      // Obter depoimentos existentes para determinar quais excluir
+      const { data: existingTestimonials } = await supabase
+        .from('testimonials')
+        .select('id');
+      
+      const existingIds = existingTestimonials?.map(t => t.id) || [];
+      const newIds = updatedTestimonials.map(t => t.id);
+      
+      // IDs para excluir (existem no banco, mas não na nova lista)
+      const idsToDelete = existingIds.filter(id => !newIds.includes(id));
+      
+      // Excluir depoimentos que não estão mais na lista
+      if (idsToDelete.length > 0) {
+        await supabase
+          .from('testimonials')
+          .delete()
+          .in('id', idsToDelete);
+      }
+      
+      // Atualizar ou inserir depoimentos existentes
+      for (const testimonial of updatedTestimonials) {
+        if (testimonial.id.startsWith('testimonial-')) {
+          // Novo depoimento (ID temporário do frontend)
+          await supabase
+            .from('testimonials')
+            .insert({
+              quote: testimonial.quote,
+              author: testimonial.author,
+              business: testimonial.business,
+              location: testimonial.location,
+              logo_url: testimonial.logoUrl
+            });
+        } else {
+          // Depoimento existente
+          await supabase
+            .from('testimonials')
+            .update({
+              quote: testimonial.quote,
+              author: testimonial.author,
+              business: testimonial.business,
+              location: testimonial.location,
+              logo_url: testimonial.logoUrl,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', testimonial.id);
+        }
+      }
+      
+      // Atualizar estado local
+      await fetchTestimonials();
+      
+      toast({
+        title: "Sucesso",
+        description: "Depoimentos atualizados com sucesso"
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar depoimentos:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar os depoimentos",
+        variant: "destructive"
+      });
+    }
   };
-  
-  const updateVideos = (videos: Video[]) => {
-    setVideos(videos);
+
+  // Função para atualizar vídeos
+  const updateVideos = async (updatedVideos: Video[]) => {
+    try {
+      // Obter vídeos existentes para determinar quais excluir
+      const { data: existingVideos } = await supabase
+        .from('videos')
+        .select('id');
+      
+      const existingIds = existingVideos?.map(v => v.id) || [];
+      const newIds = updatedVideos.map(v => v.id);
+      
+      // IDs para excluir (existem no banco, mas não na nova lista)
+      const idsToDelete = existingIds.filter(id => !newIds.includes(id));
+      
+      // Excluir vídeos que não estão mais na lista
+      if (idsToDelete.length > 0) {
+        await supabase
+          .from('videos')
+          .delete()
+          .in('id', idsToDelete);
+      }
+      
+      // Atualizar ou inserir vídeos existentes
+      for (const video of updatedVideos) {
+        if (video.id.startsWith('video-')) {
+          // Novo vídeo (ID temporário do frontend)
+          await supabase
+            .from('videos')
+            .insert({
+              url: video.url,
+              title: video.title
+            });
+        } else {
+          // Vídeo existente
+          await supabase
+            .from('videos')
+            .update({
+              url: video.url,
+              title: video.title,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', video.id);
+        }
+      }
+      
+      // Atualizar estado local
+      await fetchVideos();
+      
+      toast({
+        title: "Sucesso",
+        description: "Vídeos atualizados com sucesso"
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar vídeos:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar os vídeos",
+        variant: "destructive"
+      });
+    }
   };
   
   return (
@@ -148,6 +492,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       teamMembers,
       testimonials,
       videos,
+      isLoading,
       updateMarketingCampaigns,
       updateTeamMembers,
       updateTestimonials,

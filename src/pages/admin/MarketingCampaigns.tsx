@@ -2,33 +2,42 @@
 import React, { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { AdminGuard } from '@/components/admin/AdminGuard';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { ImageUploader } from '@/components/admin/ImageUploader';
 import { useAdmin } from '@/context/AdminContext';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const MarketingCampaigns = () => {
-  const { marketingCampaigns, updateMarketingCampaigns } = useAdmin();
+  const { marketingCampaigns, updateMarketingCampaigns, isLoading } = useAdmin();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [campaignToDelete, setCampaignToDelete] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   
-  const handleAddImage = (imageUrl: string) => {
-    const newCampaign = {
-      id: `campaign-${Date.now()}`,
-      imageUrl
-    };
-    
-    updateMarketingCampaigns([...marketingCampaigns, newCampaign]);
-    setIsAddDialogOpen(false);
-    toast({
-      title: "Campanha adicionada",
-      description: "A nova campanha foi adicionada com sucesso"
-    });
+  const handleAddImage = async (imageUrl: string) => {
+    try {
+      setIsSaving(true);
+      const newCampaign = {
+        id: `campaign-${Date.now()}`,
+        imageUrl
+      };
+      
+      await updateMarketingCampaigns([...marketingCampaigns, newCampaign]);
+      setIsAddDialogOpen(false);
+    } catch (error) {
+      console.error('Erro ao adicionar campanha:', error);
+      toast({
+        title: "Erro ao adicionar campanha",
+        description: "Ocorreu um erro ao adicionar a nova campanha.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
   
   const confirmDelete = (id: string) => {
@@ -36,22 +45,42 @@ const MarketingCampaigns = () => {
     setIsDeleteDialogOpen(true);
   };
   
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!campaignToDelete) return;
     
-    const updatedCampaigns = marketingCampaigns.filter(
-      campaign => campaign.id !== campaignToDelete
-    );
-    
-    updateMarketingCampaigns(updatedCampaigns);
-    setIsDeleteDialogOpen(false);
-    setCampaignToDelete(null);
-    
-    toast({
-      title: "Campanha excluída",
-      description: "A campanha foi excluída com sucesso"
-    });
+    try {
+      setIsSaving(true);
+      const updatedCampaigns = marketingCampaigns.filter(
+        campaign => campaign.id !== campaignToDelete
+      );
+      
+      await updateMarketingCampaigns(updatedCampaigns);
+      setIsDeleteDialogOpen(false);
+      setCampaignToDelete(null);
+    } catch (error) {
+      console.error('Erro ao excluir campanha:', error);
+      toast({
+        title: "Erro ao excluir campanha",
+        description: "Ocorreu um erro ao excluir a campanha.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <AdminGuard>
+        <AdminLayout active="marketing">
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="w-12 h-12 text-[#A21C1C] animate-spin mb-4" />
+            <p className="text-gray-500">Carregando campanhas de marketing...</p>
+          </div>
+        </AdminLayout>
+      </AdminGuard>
+    );
+  }
 
   return (
     <AdminGuard>
@@ -64,8 +93,14 @@ const MarketingCampaigns = () => {
           <Button 
             onClick={() => setIsAddDialogOpen(true)}
             className="bg-[#A21C1C] hover:bg-[#911616] text-white"
+            disabled={isSaving}
           >
-            Adicionar Imagem
+            {isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Processando...
+              </>
+            ) : "Adicionar Imagem"}
           </Button>
         </div>
         
@@ -76,8 +111,14 @@ const MarketingCampaigns = () => {
               <Button 
                 onClick={() => setIsAddDialogOpen(true)}
                 className="bg-[#A21C1C] hover:bg-[#911616] text-white"
+                disabled={isSaving}
               >
-                Adicionar Imagem
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processando...
+                  </>
+                ) : "Adicionar Imagem"}
               </Button>
             </CardContent>
           </Card>
@@ -99,9 +140,16 @@ const MarketingCampaigns = () => {
                     variant="destructive"
                     size="sm"
                     onClick={() => confirmDelete(campaign.id)}
+                    disabled={isSaving}
                   >
-                    <Trash2 size={16} className="mr-2" />
-                    Excluir
+                    {isSaving ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <>
+                        <Trash2 size={16} className="mr-2" />
+                        Excluir
+                      </>
+                    )}
                   </Button>
                 </CardFooter>
               </Card>
@@ -120,7 +168,8 @@ const MarketingCampaigns = () => {
             </DialogHeader>
             <ImageUploader 
               onImageSelected={handleAddImage} 
-              buttonText="Adicionar Imagem"
+              buttonText={isSaving ? "Adicionando..." : "Adicionar Imagem"}
+              disabled={isSaving}
             />
           </DialogContent>
         </Dialog>
@@ -138,14 +187,21 @@ const MarketingCampaigns = () => {
               <Button 
                 variant="outline" 
                 onClick={() => setIsDeleteDialogOpen(false)}
+                disabled={isSaving}
               >
                 Cancelar
               </Button>
               <Button 
                 variant="destructive" 
                 onClick={handleDelete}
+                disabled={isSaving}
               >
-                Excluir
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Excluindo...
+                  </>
+                ) : "Excluir"}
               </Button>
             </DialogFooter>
           </DialogContent>

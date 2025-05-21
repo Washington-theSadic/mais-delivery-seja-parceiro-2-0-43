@@ -6,15 +6,12 @@ import { DashboardCards } from '@/components/admin/dashboard/DashboardCards';
 import { ClickUpFormUrlConfig } from '@/components/admin/dashboard/ClickUpFormUrlConfig';
 import { AdminUserManagement } from '@/components/admin/dashboard/AdminUserManagement';
 import { InstructionsCard } from '@/components/admin/dashboard/InstructionsCard';
-// Removed: import { useUnsavedChanges } from '@/context/UnsavedChangesContext';
-// Removed: import { useAdminGuard } from '@/components/admin/AdminGuard'; (if only for setUnsavedChanges)
+import { useAdmin } from '@/context/AdminContext';
+import { Loader2 } from 'lucide-react';
 
 const AdminDashboard = () => {
-  // Removed: const { setUnsavedChanges } = useAdminGuard();
-  // Removed: const unsavedChangesContext = useUnsavedChanges();
+  const { isLoading } = useAdmin();
   
-  // Removed: handleUnsavedChanges function
-
   return (
     <AdminGuard>
       <AdminLayout active="dashboard">
@@ -23,14 +20,22 @@ const AdminDashboard = () => {
           <p className="text-gray-500">Bem-vindo ao painel administrativo do Mais Delivery</p>
         </div>
         
-        <DashboardCards />
-        <ClickUpFormUrlConfig /> {/* Prop removed */}
-        <AdminUserManagement />
-        <InstructionsCard />
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="w-12 h-12 text-[#A21C1C] animate-spin mb-4" />
+            <p className="text-gray-500">Carregando dados do banco de dados...</p>
+          </div>
+        ) : (
+          <>
+            <DashboardCards />
+            <ClickUpFormUrlConfig />
+            <AdminUserManagement />
+            <InstructionsCard />
+          </>
+        )}
       </AdminLayout>
     </AdminGuard>
   );
 };
 
 export default AdminDashboard;
-

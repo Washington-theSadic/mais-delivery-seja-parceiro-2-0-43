@@ -6,7 +6,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { useAdmin } from '@/context/AdminContext';
-import { Edit, Trash2, Video } from 'lucide-react';
+import { Edit, Trash2, Video, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -22,11 +22,12 @@ const videoSchema = z.object({
 type VideoFormValues = z.infer<typeof videoSchema>;
 
 const VideoLinks = () => {
-  const { videos, updateVideos } = useAdmin();
+  const { videos, updateVideos, isLoading } = useAdmin();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [currentVideo, setCurrentVideo] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   
   const form = useForm<VideoFormValues>({
@@ -60,60 +61,94 @@ const VideoLinks = () => {
     setIsDeleteDialogOpen(true);
   };
   
-  const onSubmitAdd = (data: VideoFormValues) => {
-    const newVideo = {
-      id: `video-${Date.now()}`,
-      title: data.title,
-      url: data.url
-    };
-    
-    updateVideos([...videos, newVideo]);
-    setIsAddDialogOpen(false);
-    
-    toast({
-      title: "Vídeo adicionado",
-      description: "O novo vídeo foi adicionado com sucesso"
-    });
+  const onSubmitAdd = async (data: VideoFormValues) => {
+    try {
+      setIsSaving(true);
+      const newVideo = {
+        id: `video-${Date.now()}`,
+        title: data.title,
+        url: data.url
+      };
+      
+      await updateVideos([...videos, newVideo]);
+      setIsAddDialogOpen(false);
+    } catch (error) {
+      console.error('Erro ao adicionar vídeo:', error);
+      toast({
+        title: "Erro ao adicionar vídeo",
+        description: "Ocorreu um erro ao adicionar o vídeo.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
   
-  const onSubmitEdit = (data: VideoFormValues) => {
+  const onSubmitEdit = async (data: VideoFormValues) => {
     if (!currentVideo) return;
     
-    const updatedVideos = videos.map(video => 
-      video.id === currentVideo 
-        ? { 
-            ...video,
-            title: data.title,
-            url: data.url 
-          }
-        : video
-    );
-    
-    updateVideos(updatedVideos);
-    setIsEditDialogOpen(false);
-    
-    toast({
-      title: "Vídeo atualizado",
-      description: "O vídeo foi atualizado com sucesso"
-    });
+    try {
+      setIsSaving(true);
+      const updatedVideos = videos.map(video => 
+        video.id === currentVideo 
+          ? { 
+              ...video,
+              title: data.title,
+              url: data.url 
+            }
+          : video
+      );
+      
+      await updateVideos(updatedVideos);
+      setIsEditDialogOpen(false);
+    } catch (error) {
+      console.error('Erro ao atualizar vídeo:', error);
+      toast({
+        title: "Erro ao atualizar vídeo",
+        description: "Ocorreu um erro ao atualizar o vídeo.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
   
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!currentVideo) return;
     
-    const updatedVideos = videos.filter(
-      video => video.id !== currentVideo
-    );
-    
-    updateVideos(updatedVideos);
-    setIsDeleteDialogOpen(false);
-    setCurrentVideo(null);
-    
-    toast({
-      title: "Vídeo excluído",
-      description: "O vídeo foi excluído com sucesso"
-    });
+    try {
+      setIsSaving(true);
+      const updatedVideos = videos.filter(
+        video => video.id !== currentVideo
+      );
+      
+      await updateVideos(updatedVideos);
+      setIsDeleteDialogOpen(false);
+      setCurrentVideo(null);
+    } catch (error) {
+      console.error('Erro ao excluir vídeo:', error);
+      toast({
+        title: "Erro ao excluir vídeo",
+        description: "Ocorreu um erro ao excluir o vídeo.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <AdminGuard>
+        <AdminLayout active="videos">
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="w-12 h-12 text-[#A21C1C] animate-spin mb-4" />
+            <p className="text-gray-500">Carregando vídeos...</p>
+          </div>
+        </AdminLayout>
+      </AdminGuard>
+    );
+  }
 
   return (
     <AdminGuard>
@@ -126,8 +161,14 @@ const VideoLinks = () => {
           <Button 
             onClick={openAddDialog}
             className="bg-[#A21C1C] hover:bg-[#911616]"
+            disabled={isSaving}
           >
-            Adicionar Vídeo
+            {isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Processando...
+              </>
+            ) : "Adicionar Vídeo"}
           </Button>
         </div>
         
@@ -138,8 +179,14 @@ const VideoLinks = () => {
               <Button 
                 onClick={openAddDialog}
                 className="bg-[#A21C1C] hover:bg-[#911616]"
+                disabled={isSaving}
               >
-                Adicionar Vídeo
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processando...
+                  </>
+                ) : "Adicionar Vídeo"}
               </Button>
             </CardContent>
           </Card>
@@ -161,17 +208,31 @@ const VideoLinks = () => {
                     variant="outline" 
                     size="sm" 
                     onClick={() => openEditDialog(video)}
+                    disabled={isSaving}
                   >
-                    <Edit size={16} className="mr-2" />
-                    Editar
+                    {isSaving ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <>
+                        <Edit size={16} className="mr-2" />
+                        Editar
+                      </>
+                    )}
                   </Button>
                   <Button 
                     variant="destructive" 
                     size="sm"
                     onClick={() => confirmDelete(video.id)}
+                    disabled={isSaving}
                   >
-                    <Trash2 size={16} className="mr-2" />
-                    Excluir
+                    {isSaving ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <>
+                        <Trash2 size={16} className="mr-2" />
+                        Excluir
+                      </>
+                    )}
                   </Button>
                 </CardFooter>
               </Card>
@@ -223,14 +284,21 @@ const VideoLinks = () => {
                     type="button" 
                     variant="outline" 
                     onClick={() => setIsAddDialogOpen(false)}
+                    disabled={isSaving}
                   >
                     Cancelar
                   </Button>
                   <Button 
                     type="submit" 
                     className="bg-[#A21C1C] hover:bg-[#911616]"
+                    disabled={isSaving}
                   >
-                    Adicionar Vídeo
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Adicionando...
+                      </>
+                    ) : "Adicionar Vídeo"}
                   </Button>
                 </DialogFooter>
               </form>
@@ -282,14 +350,21 @@ const VideoLinks = () => {
                     type="button" 
                     variant="outline" 
                     onClick={() => setIsEditDialogOpen(false)}
+                    disabled={isSaving}
                   >
                     Cancelar
                   </Button>
                   <Button 
                     type="submit" 
                     className="bg-[#A21C1C] hover:bg-[#911616]"
+                    disabled={isSaving}
                   >
-                    Salvar Alterações
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Salvando...
+                      </>
+                    ) : "Salvar Alterações"}
                   </Button>
                 </DialogFooter>
               </form>
@@ -310,14 +385,21 @@ const VideoLinks = () => {
               <Button 
                 variant="outline" 
                 onClick={() => setIsDeleteDialogOpen(false)}
+                disabled={isSaving}
               >
                 Cancelar
               </Button>
               <Button 
                 variant="destructive" 
                 onClick={handleDelete}
+                disabled={isSaving}
               >
-                Excluir
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Excluindo...
+                  </>
+                ) : "Excluir"}
               </Button>
             </DialogFooter>
           </DialogContent>
