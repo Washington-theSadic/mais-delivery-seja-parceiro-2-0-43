@@ -13,6 +13,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import MarketingCampaigns from "./pages/admin/MarketingCampaigns";
 import TeamImages from "./pages/admin/TeamImages";
 import Testimonials from "./pages/admin/Testimonials";
+import VideoLinks from "./pages/admin/VideoLinks";
 import ThankYou from "./pages/ThankYou";
 
 // Create the QueryClient outside of the component
@@ -34,6 +35,7 @@ function App() {
               <Route path="/admin/marketing" element={<MarketingCampaigns />} />
               <Route path="/admin/team" element={<TeamImages />} />
               <Route path="/admin/testimonials" element={<Testimonials />} />
+              <Route path="/admin/videos" element={<VideoLinks />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

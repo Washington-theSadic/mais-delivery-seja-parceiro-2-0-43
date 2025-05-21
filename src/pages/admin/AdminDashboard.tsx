@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { AdminGuard, useAdminGuard } from '@/components/admin/AdminGuard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Image, Users, MessageSquare, UserPlus } from 'lucide-react';
+import { Image, Users, MessageSquare, UserPlus, Video, ExternalLink } from 'lucide-react';
 import { useAdmin } from '@/context/AdminContext';
 import { Link } from 'react-router-dom';
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,8 @@ const AdminDashboard = () => {
   const { 
     marketingCampaigns, 
     teamMembers, 
-    testimonials
+    testimonials,
+    videos
   } = useAdmin();
   
   const { setUnsavedChanges } = useAdminGuard();
@@ -25,6 +26,7 @@ const AdminDashboard = () => {
   const [isNewAdminDialogOpen, setIsNewAdminDialogOpen] = useState<boolean>(false);
   const [newAdminEmail, setNewAdminEmail] = useState<string>('');
   const [newAdminPassword, setNewAdminPassword] = useState<string>('');
+  const [isValidUrl, setIsValidUrl] = useState<boolean>(true);
   const [admins, setAdmins] = useState<string[]>(() => {
     const savedAdmins = localStorage.getItem('admin-users');
     if (savedAdmins) return JSON.parse(savedAdmins);
@@ -45,6 +47,18 @@ const AdminDashboard = () => {
     const savedUrl = localStorage.getItem('clickup-form-url') || '';
     setHasChanged(clickUpFormUrl !== savedUrl);
     setUnsavedChanges(clickUpFormUrl !== savedUrl);
+    
+    // Basic URL validation
+    if (clickUpFormUrl) {
+      try {
+        new URL(clickUpFormUrl);
+        setIsValidUrl(true);
+      } catch (e) {
+        setIsValidUrl(false);
+      }
+    } else {
+      setIsValidUrl(true); // Empty URL is allowed
+    }
   }, [clickUpFormUrl, setUnsavedChanges]);
   
   useEffect(() => {
@@ -53,6 +67,15 @@ const AdminDashboard = () => {
   }, [admins]);
   
   const handleSaveClickUpUrl = () => {
+    if (!isValidUrl) {
+      toast({
+        title: "URL inválida",
+        description: "Por favor, insira uma URL válida",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     localStorage.setItem('clickup-form-url', clickUpFormUrl);
     setHasChanged(false);
     setUnsavedChanges(false);
@@ -61,6 +84,9 @@ const AdminDashboard = () => {
       description: "A URL do formulário ClickUp foi salva com sucesso.",
       duration: 3000,
     });
+    
+    // Trigger storage event for other tabs
+    window.dispatchEvent(new Event('storage'));
   };
   
   const handleAddNewAdmin = () => {
@@ -158,6 +184,13 @@ const AdminDashboard = () => {
       icon: <MessageSquare className="w-10 h-10 text-[#A21C1C]" />,
       path: '/admin/testimonials',
       count: testimonials.length
+    },
+    {
+      title: 'Vídeos',
+      description: `${videos.length} vídeos cadastrados`,
+      icon: <Video className="w-10 h-10 text-[#A21C1C]" />,
+      path: '/admin/videos',
+      count: videos.length
     }
   ];
 
@@ -169,7 +202,7 @@ const AdminDashboard = () => {
           <p className="text-gray-500">Bem-vindo ao painel administrativo do Mais Delivery</p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
           {dashboardItems.map((item, index) => (
             <Link to={item.path} key={index} className="transition-transform hover:scale-105">
               <Card>
@@ -191,7 +224,10 @@ const AdminDashboard = () => {
         <div className="mt-8">
           <Card>
             <CardHeader>
-              <CardTitle>Configuração do Formulário de Parceria</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <ExternalLink size={20} className="text-[#A21C1C]" />
+                Configuração do Formulário de Parceria
+              </CardTitle>
               <CardDescription>
                 Configure a URL do formulário ClickUp para onde os usuários serão redirecionados ao clicar em "Quero ser parceiro"
               </CardDescription>
@@ -207,13 +243,29 @@ const AdminDashboard = () => {
                   placeholder="https://forms.clickup.com/..."
                   value={clickUpFormUrl}
                   onChange={(e) => setClickUpFormUrl(e.target.value)}
+                  className={!isValidUrl ? "border-red-500" : ""}
                 />
+                {!isValidUrl && (
+                  <p className="text-red-500 text-sm">Por favor, insira uma URL válida</p>
+                )}
               </div>
+              
+              {clickUpFormUrl && isValidUrl && (
+                <div className="p-4 bg-gray-50 rounded-md border border-gray-200">
+                  <p className="text-sm font-medium mb-2">Prévia do redirecionamento:</p>
+                  <div className="flex items-center gap-2 text-blue-600 hover:underline overflow-hidden">
+                    <ExternalLink size={16} />
+                    <a href={clickUpFormUrl} target="_blank" rel="noopener noreferrer" className="text-sm truncate">
+                      {clickUpFormUrl}
+                    </a>
+                  </div>
+                </div>
+              )}
             </CardContent>
             <CardFooter>
               <Button 
-                className={`bg-[#A21C1C] hover:bg-[#911616] ${!hasChanged ? 'opacity-50 cursor-not-allowed' : ''}`}
-                disabled={!hasChanged}
+                className={`bg-[#A21C1C] hover:bg-[#911616] ${(!hasChanged || !isValidUrl) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={!hasChanged || !isValidUrl}
                 onClick={handleSaveClickUpUrl}
               >
                 Salvar URL
@@ -269,7 +321,7 @@ const AdminDashboard = () => {
             </CardHeader>
             <CardContent>
               <p className="text-gray-600">
-                Use este painel administrativo para gerenciar as campanhas de marketing, imagens da equipe e depoimentos exibidos no site.
+                Use este painel administrativo para gerenciar as campanhas de marketing, imagens da equipe, depoimentos e vídeos exibidos no site.
               </p>
               <p className="text-gray-600 mt-4">
                 Clique em uma das seções acima para começar a editar o conteúdo.

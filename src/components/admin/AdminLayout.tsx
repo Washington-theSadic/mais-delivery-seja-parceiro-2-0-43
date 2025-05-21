@@ -75,6 +75,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     label: 'Depoimentos',
     icon: <MessageSquare size={18} />,
     path: '/admin/testimonials'
+  }, {
+    id: 'videos',
+    label: 'Vídeos',
+    icon: <Video size={18} />,
+    path: '/admin/videos'
   }];
   return <div className="min-h-screen bg-gray-100 flex flex-col">
       <header className="bg-[#1F2937] text-white px-6 py-4 shadow-md">

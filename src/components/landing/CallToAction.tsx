@@ -16,13 +16,24 @@ export const CallToAction = () => {
       return () => clearTimeout(timeout);
     }, 3000);
     
-    // Get the ClickUp form URL from localStorage
-    const savedUrl = localStorage.getItem('clickup-form-url');
-    if (savedUrl) {
-      setClickUpFormUrl(savedUrl);
-    }
+    // Get the ClickUp form URL from localStorage and set up a listener to update it if it changes
+    const updateClickUpUrl = () => {
+      const savedUrl = localStorage.getItem('clickup-form-url');
+      if (savedUrl) {
+        setClickUpFormUrl(savedUrl);
+      }
+    };
     
-    return () => clearInterval(interval);
+    // Initial load
+    updateClickUpUrl();
+    
+    // Listen for storage changes (in case admin updates the URL in another tab)
+    window.addEventListener('storage', updateClickUpUrl);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', updateClickUpUrl);
+    };
   }, []);
   
   const handlePartnerClick = () => {
