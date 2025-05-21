@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 
 export const CallToAction = () => {
   const [isPulsing, setIsPulsing] = useState(false);
-  // Get the ClickUp form URL from localStorage (set in AdminDashboard)
-  const [clickUpFormUrl, setClickUpFormUrl] = useState<string>('');
+  // URL direta do ClickUp Form
+  const clickUpFormUrl = "https://forms.clickup.com/9007116077/f/8cdvbtd-1933/04EZ2JLNT1SGLXPAF2?Nome%20da%20tarefa=Estabelecimento%20Interessado";
   
   useEffect(() => {
     const interval = setInterval(() => {
@@ -16,33 +16,16 @@ export const CallToAction = () => {
       return () => clearTimeout(timeout);
     }, 3000);
     
-    // Get the ClickUp form URL from localStorage and set up a listener to update it if it changes
-    const updateClickUpUrl = () => {
-      const savedUrl = localStorage.getItem('clickup-form-url');
-      if (savedUrl) {
-        setClickUpFormUrl(savedUrl);
-      }
-    };
-    
-    // Initial load
-    updateClickUpUrl();
-    
-    // Listen for storage changes (in case admin updates the URL in another tab)
-    window.addEventListener('storage', updateClickUpUrl);
+    // Armazenar a URL no localStorage para manter compatibilidade com o código existente
+    localStorage.setItem('clickup-form-url', clickUpFormUrl);
     
     return () => {
       clearInterval(interval);
-      window.removeEventListener('storage', updateClickUpUrl);
     };
-  }, []);
+  }, [clickUpFormUrl]);
   
   const handlePartnerClick = () => {
-    if (clickUpFormUrl) {
-      window.open(clickUpFormUrl, '_blank');
-    } else {
-      // Fallback in case no URL is set - simply do nothing or console log
-      console.log("Nenhuma URL de formulário ClickUp configurada");
-    }
+    window.open(clickUpFormUrl, '_blank');
   };
 
   return <section id="cta" className="py-16 px-4 bg-gray-50 relative z-10">

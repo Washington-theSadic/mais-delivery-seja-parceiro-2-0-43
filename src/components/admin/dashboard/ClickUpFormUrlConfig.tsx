@@ -1,121 +1,113 @@
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { ExternalLink } from 'lucide-react';
-import { useUnsavedChanges } from '@/context/UnsavedChangesContext';
+import { Save, Link, Check } from 'lucide-react';
 
-export const ClickUpFormUrlConfig: React.FC = () => {
-  const [clickUpFormUrl, setClickUpFormUrl] = useState<string>('');
-  const [hasChanged, setHasChanged] = useState<boolean>(false);
-  const [isValidUrl, setIsValidUrl] = useState<boolean>(true);
+export const ClickUpFormUrlConfig = () => {
+  const defaultUrl = "https://forms.clickup.com/9007116077/f/8cdvbtd-1933/04EZ2JLNT1SGLXPAF2?Nome%20da%20tarefa=Estabelecimento%20Interessado";
+  const [formUrl, setFormUrl] = useState('');
+  const [isSaved, setIsSaved] = useState(false);
   const { toast } = useToast();
-  const { setUnsavedChanges } = useUnsavedChanges();
   
   useEffect(() => {
-    // Load stored ClickUp form URL
-    const savedUrl = localStorage.getItem('clickup-form-url') || '';
-    setClickUpFormUrl(savedUrl);
+    // Carregar URL salva ou usar a padrão
+    const savedUrl = localStorage.getItem('clickup-form-url');
+    setFormUrl(savedUrl || defaultUrl);
   }, []);
   
-  useEffect(() => {
-    // Check if URL has changed from saved value
-    const savedUrl = localStorage.getItem('clickup-form-url') || '';
-    const changed = clickUpFormUrl !== savedUrl;
-    setHasChanged(changed);
-    setUnsavedChanges(changed);
-    
-    // Basic URL validation
-    if (clickUpFormUrl) {
-      try {
-        new URL(clickUpFormUrl);
-        setIsValidUrl(true);
-      } catch (e) {
-        setIsValidUrl(false);
-      }
-    } else {
-      setIsValidUrl(true); // Empty URL is allowed
-    }
-  }, [clickUpFormUrl, setUnsavedChanges]);
-
-  const handleSaveClickUpUrl = () => {
-    if (!isValidUrl) {
+  const handleSaveUrl = () => {
+    if (!formUrl.trim()) {
       toast({
         title: "URL inválida",
         description: "Por favor, insira uma URL válida",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
     
-    localStorage.setItem('clickup-form-url', clickUpFormUrl);
-    setHasChanged(false);
-    setUnsavedChanges(false);
-    toast({
-      title: "URL do formulário salva",
-      description: "A URL do formulário ClickUp foi salva com sucesso.",
-      duration: 3000,
-    });
+    // Validação básica de URL
+    if (!formUrl.match(/^(http|https):\/\/[^ "]+/)) {
+      toast({
+        title: "URL inválida",
+        description: "Por favor, insira uma URL válida iniciando com http:// ou https://",
+        variant: "destructive"
+      });
+      return;
+    }
     
-    // Trigger storage event for other tabs
+    // Salvar no localStorage para que o site principal possa acessar
+    localStorage.setItem('clickup-form-url', formUrl);
+    
+    // Disparar evento de storage para notificar outras abas/componentes
     window.dispatchEvent(new Event('storage'));
+    
+    setIsSaved(true);
+    setTimeout(() => setIsSaved(false), 2000);
+    
+    toast({
+      title: "URL salva com sucesso",
+      description: "O formulário do ClickUp foi atualizado.",
+    });
   };
-
+  
+  const handleResetDefault = () => {
+    setFormUrl(defaultUrl);
+    localStorage.setItem('clickup-form-url', defaultUrl);
+    window.dispatchEvent(new Event('storage'));
+    
+    toast({
+      title: "URL restaurada",
+      description: "A URL padrão foi restaurada.",
+    });
+  };
+  
   return (
-    <div className="mt-8">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ExternalLink size={20} className="text-[#A21C1C]" />
-            Configuração do Formulário de Parceria
-          </CardTitle>
-          <CardDescription>
-            Configure a URL do formulário ClickUp para onde os usuários serão redirecionados ao clicar em "Quero ser parceiro"
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <label htmlFor="clickup-form-url" className="text-sm font-medium">
-              URL do formulário ClickUp
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle className="flex items-center">
+          <Link className="mr-2 text-[#A21C1C]" />
+          Configuração do Formulário ClickUp
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-gray-700">
+              URL do Formulário ClickUp (Botão "Quero ser parceiro")
             </label>
-            <Input
-              id="clickup-form-url"
-              type="url"
-              placeholder="https://forms.clickup.com/..."
-              value={clickUpFormUrl}
-              onChange={(e) => setClickUpFormUrl(e.target.value)}
-              className={!isValidUrl ? "border-red-500" : ""}
-            />
-            {!isValidUrl && (
-              <p className="text-red-500 text-sm">Por favor, insira uma URL válida</p>
-            )}
-          </div>
-          
-          {clickUpFormUrl && isValidUrl && (
-            <div className="p-4 bg-gray-50 rounded-md border border-gray-200">
-              <p className="text-sm font-medium mb-2">Prévia do redirecionamento:</p>
-              <div className="flex items-center gap-2 text-blue-600 hover:underline overflow-hidden">
-                <ExternalLink size={16} />
-                <a href={clickUpFormUrl} target="_blank" rel="noopener noreferrer" className="text-sm truncate">
-                  {clickUpFormUrl}
-                </a>
-              </div>
+            <div className="flex gap-2 mt-1">
+              <Input 
+                type="url" 
+                value={formUrl} 
+                onChange={(e) => setFormUrl(e.target.value)}
+                placeholder="https://forms.clickup.com/..."
+                className="flex-1"
+              />
+              <Button 
+                onClick={handleSaveUrl}
+                className="bg-[#A21C1C] hover:bg-[#911616] text-white flex items-center"
+              >
+                {isSaved ? <Check size={16} className="mr-2" /> : <Save size={16} className="mr-2" />}
+                {isSaved ? "Salvo!" : "Salvar"}
+              </Button>
             </div>
-          )}
-        </CardContent>
-        <CardFooter>
-          <Button 
-            className={`bg-[#A21C1C] hover:bg-[#911616] ${(!hasChanged || !isValidUrl) ? 'opacity-50 cursor-not-allowed' : ''}`}
-            disabled={!hasChanged || !isValidUrl}
-            onClick={handleSaveClickUpUrl}
-          >
-            Salvar URL
-          </Button>
-        </CardFooter>
-      </Card>
-    </div>
+          </div>
+          <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-200">
+            <div className="text-sm text-gray-500">
+              <p>Esta URL é usada no botão "Quero ser parceiro" na página inicial.</p>
+            </div>
+            <Button 
+              variant="outline" 
+              onClick={handleResetDefault}
+            >
+              Restaurar padrão
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
-

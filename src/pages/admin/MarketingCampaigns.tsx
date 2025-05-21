@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { AdminGuard } from '@/components/admin/AdminGuard';
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
@@ -7,27 +7,99 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { ImageUploader } from '@/components/admin/ImageUploader';
 import { useAdmin } from '@/context/AdminContext';
-import { Trash2, Loader2 } from 'lucide-react';
+import { Trash2, Loader2, RefreshCcw } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { supabase } from '@/integrations/supabase/client';
 
 const MarketingCampaigns = () => {
-  const { marketingCampaigns, updateMarketingCampaigns, isLoading } = useAdmin();
+  const { marketingCampaigns, updateMarketingCampaigns, isLoading, refreshData } = useAdmin();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [campaignToDelete, setCampaignToDelete] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { toast } = useToast();
+  
+  // Adicionar um refreshData no carregamento do componente
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        await refreshData();
+        console.log("Campanhas de marketing carregadas com sucesso:", marketingCampaigns);
+      } catch (error) {
+        console.error("Erro ao carregar dados de campanhas:", error);
+      }
+    };
+    
+    loadData();
+    
+    // Configurar listener para atualizações em tempo real
+    const subscription = supabase
+      .channel('public:marketing_campaigns')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'marketing_campaigns' 
+      }, () => {
+        console.log('MarketingCampaigns: Detectada atualização na tabela marketing_campaigns');
+        refreshData();
+      })
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, [refreshData]);
+  
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshData();
+      toast({
+        title: "Dados atualizados",
+        description: "As campanhas de marketing foram atualizadas com sucesso.",
+      });
+    } catch (error) {
+      console.error("Erro ao atualizar dados:", error);
+      toast({
+        title: "Erro na atualização",
+        description: "Não foi possível atualizar as campanhas de marketing.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
   
   const handleAddImage = async (imageUrl: string) => {
     try {
       setIsSaving(true);
-      const newCampaign = {
-        id: `campaign-${Date.now()}`,
-        imageUrl
-      };
       
-      await updateMarketingCampaigns([...marketingCampaigns, newCampaign]);
+      console.log("Tentando adicionar campanha com URL:", imageUrl);
+      
+      // Usar diretamente o Supabase para inserir, evitando problemas com IDs temporários
+      const { data, error } = await supabase
+        .from('marketing_campaigns')
+        .insert({
+          image_url: imageUrl
+        })
+        .select();
+      
+      if (error) {
+        console.error('Erro ao adicionar campanha:', error);
+        throw error;
+      }
+      
+      console.log("Campanha adicionada com sucesso:", data);
+      
+      // Atualizar a lista de campanhas
+      await refreshData();
       setIsAddDialogOpen(false);
+      
+      toast({
+        title: "Campanha adicionada",
+        description: "A campanha foi adicionada com sucesso.",
+      });
     } catch (error) {
       console.error('Erro ao adicionar campanha:', error);
       toast({
@@ -50,13 +122,31 @@ const MarketingCampaigns = () => {
     
     try {
       setIsSaving(true);
-      const updatedCampaigns = marketingCampaigns.filter(
-        campaign => campaign.id !== campaignToDelete
-      );
       
-      await updateMarketingCampaigns(updatedCampaigns);
+      console.log("Tentando excluir campanha:", campaignToDelete);
+      
+      // Usar diretamente o Supabase para excluir
+      const { error } = await supabase
+        .from('marketing_campaigns')
+        .delete()
+        .eq('id', campaignToDelete);
+      
+      if (error) {
+        console.error('Erro ao excluir campanha:', error);
+        throw error;
+      }
+      
+      console.log("Campanha excluída com sucesso");
+      
+      // Atualizar a lista de campanhas
+      await refreshData();
       setIsDeleteDialogOpen(false);
       setCampaignToDelete(null);
+      
+      toast({
+        title: "Campanha excluída",
+        description: "A campanha foi excluída com sucesso.",
+      });
     } catch (error) {
       console.error('Erro ao excluir campanha:', error);
       toast({
@@ -90,18 +180,33 @@ const MarketingCampaigns = () => {
             <h1 className="text-3xl font-bold text-gray-800 mb-2">Campanhas de Marketing</h1>
             <p className="text-gray-500">Gerencie as campanhas de marketing exibidas no site</p>
           </div>
-          <Button 
-            onClick={() => setIsAddDialogOpen(true)}
-            className="bg-[#A21C1C] hover:bg-[#911616] text-white"
-            disabled={isSaving}
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Processando...
-              </>
-            ) : "Adicionar Imagem"}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleManualRefresh}
+              variant="outline"
+              disabled={isRefreshing}
+              className="mr-2"
+            >
+              {isRefreshing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCcw className="h-4 w-4" />
+              )}
+              <span className="ml-2">Atualizar</span>
+            </Button>
+            <Button 
+              onClick={() => setIsAddDialogOpen(true)}
+              className="bg-[#A21C1C] hover:bg-[#911616] text-white"
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processando...
+                </>
+              ) : "Adicionar Imagem"}
+            </Button>
+          </div>
         </div>
         
         {marketingCampaigns.length === 0 ? (
@@ -142,7 +247,7 @@ const MarketingCampaigns = () => {
                     onClick={() => confirmDelete(campaign.id)}
                     disabled={isSaving}
                   >
-                    {isSaving ? (
+                    {isSaving && campaignToDelete === campaign.id ? (
                       <Loader2 size={16} className="animate-spin" />
                     ) : (
                       <>

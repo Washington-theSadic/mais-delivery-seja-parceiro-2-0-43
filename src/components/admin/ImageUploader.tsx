@@ -8,7 +8,7 @@ import { Link } from 'lucide-react';
 interface ImageUploaderProps {
   onImageSelected: (imageUrl: string) => void;
   buttonText?: string;
-  disabled?: boolean;
+  disabled?: boolean;  // Adicionado o parâmetro disabled
 }
 
 export const ImageUploader: React.FC<ImageUploaderProps> = ({ 
@@ -29,8 +29,8 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
       return;
     }
     
-    // Simple URL validation
-    if (!imageUrl.match(/^(http|https):\/\/[^ "]+$/)) {
+    // Simple URL validation (melhorada)
+    if (!imageUrl.match(/^(http|https):\/\/[^ "]+(\.[a-z]{2,}|\d+)([^\s"]*)?$/i)) {
       toast({
         title: "URL inválida",
         description: "Por favor, insira uma URL válida iniciando com http:// ou https://",
@@ -72,7 +72,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
             {buttonText}
           </Button>
         </div>
-        <p className="text-xs text-gray-500 mt-2">Insira a URL completa da imagem que deseja adicionar</p>
+        <p className="text-xs text-gray-500 mt-2">Insira a URL completa da imagem que deseja adicionar (Imgur, ImgBB, etc)</p>
       </div>
     </div>
   );
