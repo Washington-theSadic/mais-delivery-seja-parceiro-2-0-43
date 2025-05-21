@@ -1,19 +1,20 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { AdminGuard, useAdminGuard } from '@/components/admin/AdminGuard';
 import { DashboardCards } from '@/components/admin/dashboard/DashboardCards';
 import { ClickUpFormUrlConfig } from '@/components/admin/dashboard/ClickUpFormUrlConfig';
 import { AdminUserManagement } from '@/components/admin/dashboard/AdminUserManagement';
 import { InstructionsCard } from '@/components/admin/dashboard/InstructionsCard';
+import { useUnsavedChanges } from '@/context/UnsavedChangesContext';
 
 const AdminDashboard = () => {
   const { setUnsavedChanges } = useAdminGuard();
-  const [hasUnsavedChanges, setHasUnsavedChangesState] = useState<boolean>(false);
+  const unsavedChangesContext = useUnsavedChanges();
   
   // Update unsaved changes state and propagate to parent
   const handleUnsavedChanges = (value: boolean) => {
-    setHasUnsavedChangesState(value);
+    unsavedChangesContext.setUnsavedChanges(value);
     setUnsavedChanges(value);
   };
 

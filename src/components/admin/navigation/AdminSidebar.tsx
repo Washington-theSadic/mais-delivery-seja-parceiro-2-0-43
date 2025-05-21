@@ -3,17 +3,17 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { adminMenuItems, AdminMenuItem } from './AdminMenuItems';
+import { useUnsavedChanges } from '@/context/UnsavedChangesContext';
 
 interface AdminSidebarProps {
   active: string;
-  hasUnsavedChanges: boolean;
 }
 
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({
-  active,
-  hasUnsavedChanges
+  active
 }) => {
   const navigate = useNavigate();
+  const { hasUnsavedChanges } = useUnsavedChanges();
 
   const handleMenuItemClick = (item: AdminMenuItem) => {
     if (hasUnsavedChanges) {

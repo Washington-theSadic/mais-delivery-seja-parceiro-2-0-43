@@ -3,18 +3,19 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { LogOut, ArrowLeft } from 'lucide-react';
+import { useUnsavedChanges } from '@/context/UnsavedChangesContext';
 
 interface AdminHeaderProps {
   adminEmail: string;
-  hasUnsavedChanges: boolean;
   onLogout: () => void;
 }
 
 export const AdminHeader: React.FC<AdminHeaderProps> = ({
   adminEmail,
-  hasUnsavedChanges,
   onLogout
 }) => {
+  const { hasUnsavedChanges } = useUnsavedChanges();
+
   const handleLogout = () => {
     if (hasUnsavedChanges) {
       if (window.confirm('Você tem alterações não salvas. Deseja realmente sair?')) {
