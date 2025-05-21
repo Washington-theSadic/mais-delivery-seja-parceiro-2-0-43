@@ -5,16 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { ExternalLink } from 'lucide-react';
+import { useUnsavedChanges } from '@/context/UnsavedChangesContext';
 
-interface ClickUpFormUrlConfigProps {
-  setUnsavedChanges: (value: boolean) => void;
-}
-
-export const ClickUpFormUrlConfig: React.FC<ClickUpFormUrlConfigProps> = ({ setUnsavedChanges }) => {
+export const ClickUpFormUrlConfig: React.FC = () => {
   const [clickUpFormUrl, setClickUpFormUrl] = useState<string>('');
   const [hasChanged, setHasChanged] = useState<boolean>(false);
   const [isValidUrl, setIsValidUrl] = useState<boolean>(true);
   const { toast } = useToast();
+  const { setUnsavedChanges } = useUnsavedChanges();
   
   useEffect(() => {
     // Load stored ClickUp form URL
@@ -25,8 +23,9 @@ export const ClickUpFormUrlConfig: React.FC<ClickUpFormUrlConfigProps> = ({ setU
   useEffect(() => {
     // Check if URL has changed from saved value
     const savedUrl = localStorage.getItem('clickup-form-url') || '';
-    setHasChanged(clickUpFormUrl !== savedUrl);
-    setUnsavedChanges(clickUpFormUrl !== savedUrl);
+    const changed = clickUpFormUrl !== savedUrl;
+    setHasChanged(changed);
+    setUnsavedChanges(changed);
     
     // Basic URL validation
     if (clickUpFormUrl) {
@@ -119,3 +118,4 @@ export const ClickUpFormUrlConfig: React.FC<ClickUpFormUrlConfigProps> = ({ setU
     </div>
   );
 };
+

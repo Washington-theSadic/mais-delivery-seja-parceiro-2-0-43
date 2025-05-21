@@ -1,22 +1,19 @@
 
 import React from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { AdminGuard, useAdminGuard } from '@/components/admin/AdminGuard';
+import { AdminGuard } from '@/components/admin/AdminGuard';
 import { DashboardCards } from '@/components/admin/dashboard/DashboardCards';
 import { ClickUpFormUrlConfig } from '@/components/admin/dashboard/ClickUpFormUrlConfig';
 import { AdminUserManagement } from '@/components/admin/dashboard/AdminUserManagement';
 import { InstructionsCard } from '@/components/admin/dashboard/InstructionsCard';
-import { useUnsavedChanges } from '@/context/UnsavedChangesContext';
+// Removed: import { useUnsavedChanges } from '@/context/UnsavedChangesContext';
+// Removed: import { useAdminGuard } from '@/components/admin/AdminGuard'; (if only for setUnsavedChanges)
 
 const AdminDashboard = () => {
-  const { setUnsavedChanges } = useAdminGuard();
-  const unsavedChangesContext = useUnsavedChanges();
+  // Removed: const { setUnsavedChanges } = useAdminGuard();
+  // Removed: const unsavedChangesContext = useUnsavedChanges();
   
-  // Update unsaved changes state and propagate to parent
-  const handleUnsavedChanges = (value: boolean) => {
-    unsavedChangesContext.setUnsavedChanges(value);
-    setUnsavedChanges(value);
-  };
+  // Removed: handleUnsavedChanges function
 
   return (
     <AdminGuard>
@@ -27,7 +24,7 @@ const AdminDashboard = () => {
         </div>
         
         <DashboardCards />
-        <ClickUpFormUrlConfig setUnsavedChanges={handleUnsavedChanges} />
+        <ClickUpFormUrlConfig /> {/* Prop removed */}
         <AdminUserManagement />
         <InstructionsCard />
       </AdminLayout>
@@ -36,3 +33,4 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
+

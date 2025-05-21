@@ -8,13 +8,13 @@ import { UnsavedChangesProvider } from '@/context/UnsavedChangesContext';
 interface AdminLayoutProps {
   children: React.ReactNode;
   active: 'dashboard' | 'marketing' | 'team' | 'testimonials' | 'videos';
-  setUnsavedChanges?: (value: boolean) => void;
+  // Removed: setUnsavedChanges?: (value: boolean) => void;
 }
 
 export const AdminLayout: React.FC<AdminLayoutProps> = ({
   children,
   active,
-  setUnsavedChanges
+  // Removed: setUnsavedChanges
 }) => {
   const navigate = useNavigate();
   const [adminEmail, setAdminEmail] = useState<string>('');
@@ -46,18 +46,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           />
           
           <main className="flex-1 p-6">
-            {/* Pass the setUnsavedChanges function to children via React clone */}
-            {React.Children.map(children, child => {
-              if (React.isValidElement(child)) {
-                return React.cloneElement(child, {
-                  setUnsavedChanges
-                } as any);
-              }
-              return child;
-            })}
+            {/* Removed React.cloneElement logic, render children directly */}
+            {children}
           </main>
         </div>
       </div>
     </UnsavedChangesProvider>
   );
 };
+
