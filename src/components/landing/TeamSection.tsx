@@ -1,9 +1,10 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useInView } from '@/hooks/useInView';
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { ArrowRight } from 'lucide-react';
 import { useAdmin } from '@/context/AdminContext';
+import { supabase } from '@/integrations/supabase/client';
 
 export const TeamSection = () => {
   const {
@@ -13,8 +14,32 @@ export const TeamSection = () => {
     threshold: 0.1
   });
   
-  const { teamMembers } = useAdmin();
+  const { teamMembers, refreshData } = useAdmin();
   const teamImages = teamMembers.map(member => member.imageUrl);
+  
+  // Força uma nova busca quando o componente é montado
+  useEffect(() => {
+    // Atualizar dados quando este componente for montado
+    refreshData?.();
+    
+    // Configurar listener para atualizações em tempo real
+    const subscription = supabase
+      .channel('public:team_members')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'team_members' 
+      }, () => {
+        console.log('TeamSection: Detectada atualização na tabela team_members');
+        refreshData?.();
+      })
+      .subscribe();
+    
+    // Limpar subscription quando o componente for desmontado
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, [refreshData]);
   
   if (teamImages.length === 0) {
     return null;

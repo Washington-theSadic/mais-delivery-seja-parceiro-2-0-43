@@ -1,9 +1,10 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useInView } from '@/hooks/useInView';
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { ArrowRight } from 'lucide-react';
 import { useAdmin } from '@/context/AdminContext';
+import { supabase } from '@/integrations/supabase/client';
 
 export const MarketingCampaigns = () => {
   const {
@@ -13,8 +14,32 @@ export const MarketingCampaigns = () => {
     threshold: 0.1
   });
   
-  const { marketingCampaigns } = useAdmin();
+  const { marketingCampaigns, refreshData } = useAdmin();
   const campaigns = marketingCampaigns.map(campaign => campaign.imageUrl);
+  
+  // Força uma nova busca quando o componente é montado
+  useEffect(() => {
+    // Atualizar dados quando este componente for montado
+    refreshData?.();
+    
+    // Configurar listener para atualizações em tempo real
+    const subscription = supabase
+      .channel('public:marketing_campaigns')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'marketing_campaigns' 
+      }, () => {
+        console.log('MarketingCampaigns: Detectada atualização na tabela marketing_campaigns');
+        refreshData?.();
+      })
+      .subscribe();
+    
+    // Limpar subscription quando o componente for desmontado
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, [refreshData]);
   
   if (campaigns.length === 0) {
     return null;

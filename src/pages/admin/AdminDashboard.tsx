@@ -8,9 +8,30 @@ import { AdminUserManagement } from '@/components/admin/dashboard/AdminUserManag
 import { InstructionsCard } from '@/components/admin/dashboard/InstructionsCard';
 import { useAdmin } from '@/context/AdminContext';
 import { Loader2 } from 'lucide-react';
+import { useToast } from "@/components/ui/use-toast";
+import { useEffect } from 'react';
 
 const AdminDashboard = () => {
-  const { isLoading } = useAdmin();
+  const { isLoading, refreshData } = useAdmin();
+  const { toast } = useToast();
+  
+  // Forçar uma atualização dos dados ao carregar o dashboard
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        await refreshData();
+      } catch (error) {
+        console.error("Erro ao carregar dados:", error);
+        toast({
+          title: "Erro ao sincronizar dados",
+          description: "Não foi possível atualizar os dados do banco de dados.",
+          variant: "destructive"
+        });
+      }
+    };
+    
+    loadData();
+  }, [refreshData, toast]);
   
   return (
     <AdminGuard>

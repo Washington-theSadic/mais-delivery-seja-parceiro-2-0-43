@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -38,6 +38,7 @@ interface AdminContextType {
   updateTeamMembers: (members: TeamMember[]) => Promise<void>;
   updateTestimonials: (testimonials: Testimonial[]) => Promise<void>;
   updateVideos: (videos: Video[]) => Promise<void>;
+  refreshData: () => Promise<void>;
 }
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
@@ -61,19 +62,25 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Função para carregar dados das campanhas de marketing
   const fetchMarketingCampaigns = async () => {
     try {
+      console.log('Fetchando campanhas de marketing');
       const { data, error } = await supabase
         .from('marketing_campaigns')
         .select('*')
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao carregar campanhas:', error);
+        throw error;
+      }
 
+      console.log('Campanhas carregadas:', data);
       const formattedData = data.map(campaign => ({
         id: campaign.id,
         imageUrl: campaign.image_url
       }));
 
       setMarketingCampaigns(formattedData);
+      return formattedData;
     } catch (error) {
       console.error('Erro ao carregar campanhas de marketing:', error);
       toast({
@@ -81,25 +88,32 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         description: "Não foi possível carregar as campanhas de marketing.",
         variant: "destructive"
       });
+      throw error;
     }
   };
 
   // Função para carregar dados dos membros da equipe
   const fetchTeamMembers = async () => {
     try {
+      console.log('Fetchando membros da equipe');
       const { data, error } = await supabase
         .from('team_members')
         .select('*')
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao carregar equipe:', error);
+        throw error;
+      }
 
+      console.log('Membros da equipe carregados:', data);
       const formattedData = data.map(member => ({
         id: member.id,
         imageUrl: member.image_url
       }));
 
       setTeamMembers(formattedData);
+      return formattedData;
     } catch (error) {
       console.error('Erro ao carregar membros da equipe:', error);
       toast({
@@ -107,19 +121,25 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         description: "Não foi possível carregar os membros da equipe.",
         variant: "destructive"
       });
+      throw error;
     }
   };
 
   // Função para carregar dados dos depoimentos
   const fetchTestimonials = async () => {
     try {
+      console.log('Fetchando depoimentos');
       const { data, error } = await supabase
         .from('testimonials')
         .select('*')
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao carregar depoimentos:', error);
+        throw error;
+      }
 
+      console.log('Depoimentos carregados:', data);
       const formattedData = data.map(testimonial => ({
         id: testimonial.id,
         quote: testimonial.quote,
@@ -130,6 +150,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }));
 
       setTestimonials(formattedData);
+      return formattedData;
     } catch (error) {
       console.error('Erro ao carregar depoimentos:', error);
       toast({
@@ -137,19 +158,25 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         description: "Não foi possível carregar os depoimentos.",
         variant: "destructive"
       });
+      throw error;
     }
   };
 
   // Função para carregar dados dos vídeos
   const fetchVideos = async () => {
     try {
+      console.log('Fetchando vídeos');
       const { data, error } = await supabase
         .from('videos')
         .select('*')
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao carregar vídeos:', error);
+        throw error;
+      }
 
+      console.log('Vídeos carregados:', data);
       const formattedData = data.map(video => ({
         id: video.id,
         url: video.url,
@@ -157,6 +184,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }));
 
       setVideos(formattedData);
+      return formattedData;
     } catch (error) {
       console.error('Erro ao carregar vídeos:', error);
       toast({
@@ -164,20 +192,53 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         description: "Não foi possível carregar os vídeos.",
         variant: "destructive"
       });
+      throw error;
     }
   };
 
-  // Carregar todos os dados quando o componente é montado
-  useEffect(() => {
-    const loadAllData = async () => {
-      setIsLoading(true);
+  // Função para recarregar todos os dados
+  const refreshData = useCallback(async () => {
+    console.log('Recarregando todos os dados');
+    setIsLoading(true);
+    try {
       await Promise.all([
         fetchMarketingCampaigns(),
         fetchTeamMembers(),
         fetchTestimonials(),
         fetchVideos()
       ]);
+      toast({
+        title: "Dados atualizados",
+        description: "Todos os dados foram sincronizados com sucesso"
+      });
+    } catch (error) {
+      console.error('Erro ao recarregar dados:', error);
+      toast({
+        title: "Erro na sincronização",
+        description: "Ocorreu um erro ao sincronizar os dados",
+        variant: "destructive"
+      });
+    } finally {
       setIsLoading(false);
+    }
+  }, [toast]);
+
+  // Carregar todos os dados quando o componente é montado
+  useEffect(() => {
+    const loadAllData = async () => {
+      setIsLoading(true);
+      try {
+        await Promise.all([
+          fetchMarketingCampaigns(),
+          fetchTeamMembers(),
+          fetchTestimonials(),
+          fetchVideos()
+        ]);
+      } catch (error) {
+        console.error('Erro ao carregar dados iniciais:', error);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     loadAllData();
@@ -189,7 +250,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         event: '*', 
         schema: 'public', 
         table: 'marketing_campaigns' 
-      }, () => {
+      }, (payload) => {
+        console.log('Alteração detectada em marketing_campaigns:', payload);
         fetchMarketingCampaigns();
       })
       .subscribe();
@@ -200,7 +262,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         event: '*', 
         schema: 'public', 
         table: 'team_members' 
-      }, () => {
+      }, (payload) => {
+        console.log('Alteração detectada em team_members:', payload);
         fetchTeamMembers();
       })
       .subscribe();
@@ -211,7 +274,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         event: '*', 
         schema: 'public', 
         table: 'testimonials' 
-      }, () => {
+      }, (payload) => {
+        console.log('Alteração detectada em testimonials:', payload);
         fetchTestimonials();
       })
       .subscribe();
@@ -222,7 +286,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         event: '*', 
         schema: 'public', 
         table: 'videos' 
-      }, () => {
+      }, (payload) => {
+        console.log('Alteração detectada em videos:', payload);
         fetchVideos();
       })
       .subscribe();
@@ -239,6 +304,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Função para atualizar campanhas de marketing
   const updateMarketingCampaigns = async (campaigns: MarketingCampaign[]) => {
     try {
+      console.log('Atualizando campanhas de marketing:', campaigns);
+      
       // Obter campanhas existentes para determinar quais excluir
       const { data: existingCampaigns } = await supabase
         .from('marketing_campaigns')
@@ -250,32 +317,51 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // IDs para excluir (existem no banco, mas não na nova lista)
       const idsToDelete = existingIds.filter(id => !newIds.includes(id));
       
+      console.log('IDs a excluir:', idsToDelete);
+      
       // Excluir campanhas que não estão mais na lista
       if (idsToDelete.length > 0) {
-        await supabase
+        const { error: deleteError } = await supabase
           .from('marketing_campaigns')
           .delete()
           .in('id', idsToDelete);
+          
+        if (deleteError) {
+          console.error('Erro ao excluir campanhas:', deleteError);
+          throw deleteError;
+        }
       }
       
       // Atualizar ou inserir campanhas existentes
       for (const campaign of campaigns) {
         if (campaign.id.startsWith('campaign-')) {
           // Nova campanha (ID temporário do frontend)
-          await supabase
+          console.log('Inserindo nova campanha:', campaign);
+          const { error: insertError } = await supabase
             .from('marketing_campaigns')
             .insert({
               image_url: campaign.imageUrl
             });
+            
+          if (insertError) {
+            console.error('Erro ao inserir campanha:', insertError);
+            throw insertError;
+          }
         } else {
           // Campanha existente
-          await supabase
+          console.log('Atualizando campanha existente:', campaign);
+          const { error: updateError } = await supabase
             .from('marketing_campaigns')
             .update({
               image_url: campaign.imageUrl,
               updated_at: new Date().toISOString()
             })
             .eq('id', campaign.id);
+            
+          if (updateError) {
+            console.error('Erro ao atualizar campanha:', updateError);
+            throw updateError;
+          }
         }
       }
       
@@ -293,12 +379,15 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         description: "Não foi possível atualizar as campanhas de marketing",
         variant: "destructive"
       });
+      throw error;
     }
   };
 
   // Função para atualizar membros da equipe
   const updateTeamMembers = async (members: TeamMember[]) => {
     try {
+      console.log('Atualizando membros da equipe:', members);
+      
       // Obter membros existentes para determinar quais excluir
       const { data: existingMembers } = await supabase
         .from('team_members')
@@ -310,32 +399,51 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // IDs para excluir (existem no banco, mas não na nova lista)
       const idsToDelete = existingIds.filter(id => !newIds.includes(id));
       
+      console.log('IDs a excluir:', idsToDelete);
+      
       // Excluir membros que não estão mais na lista
       if (idsToDelete.length > 0) {
-        await supabase
+        const { error: deleteError } = await supabase
           .from('team_members')
           .delete()
           .in('id', idsToDelete);
+          
+        if (deleteError) {
+          console.error('Erro ao excluir membros da equipe:', deleteError);
+          throw deleteError;
+        }
       }
       
       // Atualizar ou inserir membros existentes
       for (const member of members) {
         if (member.id.startsWith('team-')) {
           // Novo membro (ID temporário do frontend)
-          await supabase
+          console.log('Inserindo novo membro da equipe:', member);
+          const { error: insertError } = await supabase
             .from('team_members')
             .insert({
               image_url: member.imageUrl
             });
+            
+          if (insertError) {
+            console.error('Erro ao inserir membro da equipe:', insertError);
+            throw insertError;
+          }
         } else {
           // Membro existente
-          await supabase
+          console.log('Atualizando membro da equipe existente:', member);
+          const { error: updateError } = await supabase
             .from('team_members')
             .update({
               image_url: member.imageUrl,
               updated_at: new Date().toISOString()
             })
             .eq('id', member.id);
+            
+          if (updateError) {
+            console.error('Erro ao atualizar membro da equipe:', updateError);
+            throw updateError;
+          }
         }
       }
       
@@ -353,12 +461,15 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         description: "Não foi possível atualizar os membros da equipe",
         variant: "destructive"
       });
+      throw error;
     }
   };
 
   // Função para atualizar depoimentos
   const updateTestimonials = async (updatedTestimonials: Testimonial[]) => {
     try {
+      console.log('Atualizando depoimentos:', updatedTestimonials);
+      
       // Obter depoimentos existentes para determinar quais excluir
       const { data: existingTestimonials } = await supabase
         .from('testimonials')
@@ -370,19 +481,27 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // IDs para excluir (existem no banco, mas não na nova lista)
       const idsToDelete = existingIds.filter(id => !newIds.includes(id));
       
+      console.log('IDs a excluir:', idsToDelete);
+      
       // Excluir depoimentos que não estão mais na lista
       if (idsToDelete.length > 0) {
-        await supabase
+        const { error: deleteError } = await supabase
           .from('testimonials')
           .delete()
           .in('id', idsToDelete);
+          
+        if (deleteError) {
+          console.error('Erro ao excluir depoimentos:', deleteError);
+          throw deleteError;
+        }
       }
       
       // Atualizar ou inserir depoimentos existentes
       for (const testimonial of updatedTestimonials) {
         if (testimonial.id.startsWith('testimonial-')) {
           // Novo depoimento (ID temporário do frontend)
-          await supabase
+          console.log('Inserindo novo depoimento:', testimonial);
+          const { error: insertError } = await supabase
             .from('testimonials')
             .insert({
               quote: testimonial.quote,
@@ -391,9 +510,15 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               location: testimonial.location,
               logo_url: testimonial.logoUrl
             });
+            
+          if (insertError) {
+            console.error('Erro ao inserir depoimento:', insertError);
+            throw insertError;
+          }
         } else {
           // Depoimento existente
-          await supabase
+          console.log('Atualizando depoimento existente:', testimonial);
+          const { error: updateError } = await supabase
             .from('testimonials')
             .update({
               quote: testimonial.quote,
@@ -404,6 +529,11 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               updated_at: new Date().toISOString()
             })
             .eq('id', testimonial.id);
+            
+          if (updateError) {
+            console.error('Erro ao atualizar depoimento:', updateError);
+            throw updateError;
+          }
         }
       }
       
@@ -421,12 +551,15 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         description: "Não foi possível atualizar os depoimentos",
         variant: "destructive"
       });
+      throw error;
     }
   };
 
   // Função para atualizar vídeos
   const updateVideos = async (updatedVideos: Video[]) => {
     try {
+      console.log('Atualizando vídeos:', updatedVideos);
+      
       // Obter vídeos existentes para determinar quais excluir
       const { data: existingVideos } = await supabase
         .from('videos')
@@ -438,27 +571,41 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // IDs para excluir (existem no banco, mas não na nova lista)
       const idsToDelete = existingIds.filter(id => !newIds.includes(id));
       
+      console.log('IDs a excluir:', idsToDelete);
+      
       // Excluir vídeos que não estão mais na lista
       if (idsToDelete.length > 0) {
-        await supabase
+        const { error: deleteError } = await supabase
           .from('videos')
           .delete()
           .in('id', idsToDelete);
+          
+        if (deleteError) {
+          console.error('Erro ao excluir vídeos:', deleteError);
+          throw deleteError;
+        }
       }
       
       // Atualizar ou inserir vídeos existentes
       for (const video of updatedVideos) {
         if (video.id.startsWith('video-')) {
           // Novo vídeo (ID temporário do frontend)
-          await supabase
+          console.log('Inserindo novo vídeo:', video);
+          const { error: insertError } = await supabase
             .from('videos')
             .insert({
               url: video.url,
               title: video.title
             });
+            
+          if (insertError) {
+            console.error('Erro ao inserir vídeo:', insertError);
+            throw insertError;
+          }
         } else {
           // Vídeo existente
-          await supabase
+          console.log('Atualizando vídeo existente:', video);
+          const { error: updateError } = await supabase
             .from('videos')
             .update({
               url: video.url,
@@ -466,6 +613,11 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               updated_at: new Date().toISOString()
             })
             .eq('id', video.id);
+            
+          if (updateError) {
+            console.error('Erro ao atualizar vídeo:', updateError);
+            throw updateError;
+          }
         }
       }
       
@@ -483,6 +635,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         description: "Não foi possível atualizar os vídeos",
         variant: "destructive"
       });
+      throw error;
     }
   };
   
@@ -496,7 +649,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       updateMarketingCampaigns,
       updateTeamMembers,
       updateTestimonials,
-      updateVideos
+      updateVideos,
+      refreshData
     }}>
       {children}
     </AdminContext.Provider>
