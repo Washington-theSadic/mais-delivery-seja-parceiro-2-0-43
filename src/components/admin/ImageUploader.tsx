@@ -8,9 +8,14 @@ import { Link } from 'lucide-react';
 interface ImageUploaderProps {
   onImageSelected: (imageUrl: string) => void;
   buttonText?: string;
+  disabled?: boolean;
 }
 
-export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageSelected, buttonText = "Adicionar Imagem" }) => {
+export const ImageUploader: React.FC<ImageUploaderProps> = ({ 
+  onImageSelected, 
+  buttonText = "Adicionar Imagem",
+  disabled = false
+}) => {
   const [imageUrl, setImageUrl] = useState('');
   const { toast } = useToast();
   
@@ -56,10 +61,12 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageSelected, b
             value={imageUrl}
             onChange={(e) => setImageUrl(e.target.value)}
             className="flex-1"
+            disabled={disabled}
           />
           <Button 
             onClick={handleUrlSubmit}
             className="bg-[#A21C1C] hover:bg-[#911616] text-white"
+            disabled={disabled}
           >
             <Link size={16} className="mr-2" />
             {buttonText}
